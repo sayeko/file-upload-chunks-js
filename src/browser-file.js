@@ -1,4 +1,4 @@
-import ChunkConnectionPool from "./chunk-connection-pool";
+import QueueChunkConnection from "./queue-chunk-connection";
 
 export default class BrowserFile {
   constructor(file) {
@@ -8,7 +8,7 @@ export default class BrowserFile {
 
     this.status = BrowserFile.STATUS.INIT;
     this.uuid = `file-${Date.now()}`;
-    this.chunkConnectionPool = new ChunkConnectionPool(file);
+    this.queueChunkConnection = new QueueChunkConnection(file);
 
     console.log(`[BrowserFile] Created new browser file object: ${this.uuid}`);
   }
@@ -20,11 +20,14 @@ export default class BrowserFile {
     }
 
     this.status = BrowserFile.STATUS.PROGRESS;
-
-    this.chunkConnectionPool
+    debugger;
+    this.queueChunkConnection
       .processChunk()
       .then(result => console.log(result))
-      .catch(error => console.error(error));
+      .catch(error => {
+        debugger;
+        console.error("BrowserFile", error);
+      });
 
     // Handler has to send the next chunk
     // When chunk completed.

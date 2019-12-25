@@ -21,9 +21,11 @@ export default class ChunkConnection {
         console.error("[ChunkConnection] Error...", event);
         const error = this._onErrorChunk();
 
-        if (error !== undefined) {
-          reject(error);
+        if (!error) {
+          return;
         }
+
+        reject(error);
       };
       this.xhr.onprogress = event => {
         console.error("[ChunkConnection] Loading Chunk...", event);
@@ -40,7 +42,7 @@ export default class ChunkConnection {
 
   _onLoadChunk() {}
 
-  _onErrorChunk(reject) {
+  _onErrorChunk() {
     this.retries++;
 
     if (ChunkConnection.MAX_RETRIES <= this.retries) {
@@ -76,6 +78,6 @@ export default class ChunkConnection {
   }
 }
 
-ChunkConnection.MAX_RETRIES = 3;
+ChunkConnection.MAX_RETRIES = 5;
 ChunkConnection.TIMEOUT = 5000;
 ChunkConnection.URL = "https://fakeurl.com/upload/chunk";
