@@ -1,9 +1,13 @@
 export default class ChunkRequest {
-    constructor(chunk) {
+    constructor(chunk, onSuccess, onFailure, onProgress) {
         this.xhr = null;
         this.retries = 0;
         this.retryTimerId = null;
         this.chunk = chunk;
+        this.result = null;
+        this.onSuccess = onSuccess || window.noop;
+        this.onFailure = onFailure || window.noop;
+        this.onProgress = onProgress || window.noop;
     }
 
     fire() {
@@ -16,6 +20,8 @@ export default class ChunkRequest {
 
         this.xhr.onload = event => {
             console.error("[ChunkRequest] Chunk Loaded...", event);
+            this.result = event;
+            this.onSuccess(event);
         };
         this.xhr.onerror = event => {
             console.error("[ChunkRequest] Error...", event);
@@ -23,10 +29,12 @@ export default class ChunkRequest {
             this.retries++;
 
             if (ChunkRequest.MAX_RETRIES <= this.retries) {
-                return {
+                const error = {
                     type: "error",
                     errorMessage: "exceeded maximum retry attempts."
                 };
+                this.onFailure(error);
+                return;
             }
 
             // Retry with exponential back off (625ms, ~1.5s, ~4s, ~10s, ...).
@@ -36,7 +44,12 @@ export default class ChunkRequest {
             }, Math.pow(ChunkRequest.EXPONENTIAL_FACTOR, this.retries) * 250);
         };
         this.xhr.onprogress = event => {
-            console.error("[ChunkRequest] Loading Chunk...", event);
+            console.log("[ChunkRequest] Sent bytes chunk...", event);
+
+            this.onProgress({
+                loaded: event.loaded,
+                total: this.chunk.totalBytesCount
+            });
         };
 
         this.xhr.open("POST", ChunkRequest.URL);
@@ -47,21 +60,18 @@ export default class ChunkRequest {
     }
 
     abort() {
-        if (!this.xhr) {
-            console.warn(
-                "[ChunkRequest] No active request"
+        if (this.xhr) {
+            this.xhr.abort();
+            console.log(
+                "[ChunkRequest] Aborted request", this.xhr
             );
-            return;
         }
 
-        this.xhr.abort();
-
-        // Clear retry mechanism.
+        this.xhr = null;
+        this.result = null;
         this.retries = 0;
-        if (this.retryTimerId !== null) {
-            this.retryTimerId = null;
-            clearTimeout(this.retryTimerId);
-        }
+        clearTimeout(this.retryTimerId);
+        this.retryTimerId = null;
     }
 }
 
